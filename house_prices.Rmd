@@ -1,0 +1,225 @@
+---
+title: "Housing Prices"
+output:
+  html_document:
+    theme: cerulean
+---
+
+```{r, message=FALSE, warning=FALSE}
+# find header code to ignore this upon knit and such
+
+# code instructions rom copilot to upload a data set from kaggle using the kaggle api
+#install.packages("devtools")
+#devtools::install_github("ldurazo/kaggler")
+# gotten from Copilot
+#library(readr)
+#library(kaggler)
+# this is specific to your Kaggle user
+#kgl_auth(creds_file = 'kaggle.json')
+#response <- kgl_datasets_download_all(owner_dataset = "ahmedshahriarsakib/usa-real-estate-dataset/data?select=realtor-data.zip.csv")
+#download.file(response, "data/temp.zip", mode = "wb")
+
+# Currently this last part is not working.
+
+# Loading in libraries
+library(DT)
+# Need DT for Fancy Table
+library(tidyverse)
+# Makes the pipe operator work (among other things)
+library(ggplot2)
+# for plots
+```
+
+## Background
+
+In recent years, we have seen rising prices all over the US. House prices are not exempt from this. I would like to know where the prices are currently the lowest in the US. I would also like to know if there is a significant difference between the prices of houses of roughly the same size in urban areas compared to rural areas.
+
+```{r}
+## The code within the double pounds was gotten from Copilot
+# Reading in Raw data to temp file
+f <- file.path(tempdir(),"archive\\realtor-data.zip.csv")
+
+# Check if the file exsists
+if (file.exists(f)) {
+  raw_data <- read.csv("archive\\realtor-data.zip.csv", header = TRUE)
+} else { print("Download data from the kaggle link below")}
+
+##
+
+raw_data <- read.csv("archive\\realtor-data.zip.csv", header = TRUE)
+
+# Filtering the Data down
+house_data <- raw_data %>% 
+  filter(house_size > 0) %>% # Getting rid of NA in house size
+  filter(bed > 0 & bed < 6) %>% # slimming down the bed count to reasonable numbers (some were 100+ beds which we're not interested in)  
+  filter(acre_lot > 0) %>% # getting rid of NA in acre lot
+  filter(price > 1000) %>% # making sure price is reasonable
+  select(c(price, bed, bath, acre_lot, city, state, house_size)) %>% # Don't care too much about specific address, who is selling it, or "current status"
+  
+  filter(state %in% c("Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", "Connecticut", "Delaware", "Florida", "Georgia", "Hawaii", "Idaho", "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky", "Louisiana", "Maine", "Maryland", "Massachusetts", "Michigan", "Minnesota", "Mississippi", "Missouri", "Montana", "Nebraska","Nevada","New Hampshire", "New Jersey", "New Mexico", "New York", "North Carolina", "North Dakota", "Ohio", "Oklahoma", "Oregon", "Pennsylvania", "Rhode Island", "South Carolina", "South Dakota", "Tennessee", "Texas", "Utah", "Vermont", "Virginia", "Washington", "West Virginia", "Wisconsin", "Wyoming")) %>% # In the states
+  
+  mutate(division = case_when(
+    state %in% c("Connecticut","Maine","Massachusetts","New Hampshire", "Rhode Island","Vermont") ~ "New England",
+    state %in% c("New Jersey","New York","Pennsylvania") ~ "Middle Atlantic",
+    state %in% c("Illinois", "Indiana", "Michigan", "Ohio", "Wisconsin") ~ "East North Central",
+    state %in% c("Iowa", "Kansas", "Minnesota", "Missouri", "Nebraska", "North Dakota", "South Dakota") ~ "West North Central",
+    state %in% c("Delaware", "Florida", "Georgia", "Maryland", "North Carolina", "South Carolina", "Virginia", "West Virginia") ~ "South Atlantic",
+    state %in% c("Alabama", "Kentucky", "Mississippi", "Tennessee") ~ "East South Central",
+    state %in% c("Arkansas", "Louisiana", "Oklahoma", "Texas") ~ "West South Central",
+    state %in% c("Arizona", "Colorado", "Idaho", "Montana", "Nevada", "New Mexico", "Utah", "Wyoming") ~ "Mountain",
+    state %in% c("Alaska", "California", "Hawaii", "Oregon", "Washington") ~ "Pacific"
+  )) %>%  # sorting data by Census Bureau Divisions...
+  
+  mutate(region = case_when(
+    division %in% c("New England", "Middle Atlantic") ~ "North East",
+    division %in% c("East North Central", "West North Central") ~ "Midwest",
+    division %in% c("South Atlantic", "East South Central", "West South Central") ~ "South",
+    division %in% c("Mountain", "Pacific") ~ "West"
+  )) # ... and regions
+#view(house_data)
+```
+
+## Data
+
+The data set we will be using is a subset of the {r} [USA Real Estate Dataset](https://www.kaggle.com/datasets/ahmedshahriarsakib/usa-real-estate-dataset/data) from kaggle.com.
+
+We are focusing on primarily the price of the house, the size of the house (square feet), and the general location of the house. All the houses that we will be looking at are in the United States (not including provinces) and have a maximum of 5 bedrooms. 
+
+```{r}
+# Display the data set. particularly the variables we are most interested.
+datatable(house_data, options = list(lengthMenu = c(3,10,50)), extensions = "Responsive")
+```
+
+Note: All non-values (NA) in house_size, acre_lot, and bed have been removed
+
+## State Pricing
+
+We will start by looking at which region has the lowest pricing on average. Since we are looking at where the prices are the least expensive, I am certain that it will not be in California. Based on my limited experience, my hypothesis is that the states in the northern central area of the United States will have the lowest prices due to the spread of cities. This area includes the following states: Kansas, Nebraska, Missouri, Ohio, Minnesota, and both Dakotas.
+
+```{r}
+house_data %>% 
+  group_by(region) %>% 
+  summarise(mean = mean(price), median = median(price))
+```
+
+We clearly see that the Midwest region has the smallest mean and median prices out of our four regions.
+
+The Midwest region is divided into two divisions. 
+The East North Central division covering Illinois, Indiana, Michigan, Ohio, and Wisconsin. 
+The West North Central division covering Iowa, Kansas, Minnesota, Missouri, Nebraska, North Dakota, and South Dakota.
+
+
+```{r}
+region_data  <-  filter(house_data, region == "Midwest")
+region_data %>% 
+  group_by(division) %>% 
+  summarise(mean = mean(price), median = median(price))
+```
+
+We can see that the East North Central division has the lower average out of the two.
+
+
+```{r}
+division_data <- filter(region_data, division == "East North Central")
+par(mfrow = c(1,2))
+ggplot(division_data, aes(x=state, y=price)) +
+  geom_boxplot() +
+  labs(
+    title = "House Price by State in the East North Central division",
+    x = "State",
+    y = "House Price (US dollars)"
+  )
+
+ggplot(division_data, aes(x=state, y=log(price))) +
+  geom_boxplot() +
+  labs(
+    title = "The Log of House Price by State in the East North Central division",
+    x = "State",
+    y = "Log of House Price (US dollars)"
+  )
+```
+From the plot on the left we can guess that Ohio has the least average price since it certainly does not 
+have anywhere close to the maximum house prices of the other states in this division. To get a better 
+look at the truth of the data, we take a look at the log of the price compared to state, as shown on the right. 
+It is clear that Ohio does indeed have the least average house price.
+
+## Urban VS Rural
+
+Now we will turn our attention to the prices between urban vs rural by focusing on the houses in Ohio. 
+My hypothesis is that the prices will be cheaper in the rural areas due to the distance from city amenities.
+
+```{r}
+population_data_raw <- read.csv("us-cities-table-for-ohio.csv")
+
+population_data <- population_data_raw %>% 
+  mutate(type = case_when(
+    pop2024 > 100000 ~ "Urban",
+    pop2024 < 5000 ~ "Rural",
+    pop2024 <= 100000 & pop2024 >= 5000 ~ "Suburban"
+  )) %>% 
+  select(c(name, type))
+
+# List and Unlist gotten from Copiolot
+
+urban_ohio <- population_data %>% 
+  filter(type == "Urban") 
+urban_list <- unlist(list(urban_ohio$name))
+
+suburban_ohio <- population_data %>% 
+  filter(type == "Suburban") 
+suburban_list <- unlist(list(suburban_ohio$name))
+
+rural_ohio <- population_data %>% 
+  filter(type == "Rural") 
+rural_list <- unlist(list(rural_ohio$name))
+
+# load in the population data
+# filter into the three categories explained below (100000+ Urban, 5000- rural, else sub-urban)
+```
+
+
+While we are focusing on Ohio, we do need to keep in mind that other states could differ from our results. 
+Our urban classification will be based on the population facts in the article 
+{r} [Ohio's Cities by Population (2024)](https://worldpopulationreview.com/states/cities/ohio). 
+By the United States Census Bureau's {r} [definition of rural and urban](https://www.census.gov/programs-surveys/geography/guidance/geo-areas/urban-rual.html), 
+we will classify any city with a population over 100,000 as urban. Cities with a population between 5,00 and 99,000 will be classified as sub-urban. 
+Any city that is not classified as either urban or sub-urban will be considered as rural for this analysis. These definitions give the following split in the data.
+
+```{r}
+
+ohio_data <- division_data %>% 
+  filter(state == "Ohio") %>% 
+  select(c(price, bed, bath, acre_lot, city, state, house_size)) %>%
+  mutate(type = case_when(
+    city %in% urban_list ~ "Urban",
+    city %in% suburban_list ~ "Suburban",
+    city %in% rural_list ~ "Rural",
+    .default = "Rural"
+  ))
+#view(ohio_data)
+ohio_data %>% 
+  count(type)
+```
+
+We now know that there are more "suburban" houses in our data set than "rural" or "urban". Now let us evaluate the spread of the data.
+
+```{r}
+par(mfrow = c(1,2))
+ggplot(ohio_data, aes(x=type, y=price)) +
+  geom_boxplot() +
+  labs(
+    title = "House Price of Urban, Suburban, and Rual areas in Ohio",
+    x = "Location",
+    y = "House Price (US dollars)"
+  )
+ggplot(ohio_data, aes(x=type, y=log(price))) +
+  geom_boxplot() +
+  labs(
+    title = "Log of House Price of Urban, Suburban, and Rual areas in Ohio",
+    x = "Location",
+    y = "Log of House Price (US dollars)"
+  )
+```
+We see that we have the same problem as before when trying to view the data, so we use the same trick as before and look at the log of the price. 
+
+Now that we can see the spread of the data more clearly, it is clear that the average price for urban houses in Ohio is lower than either suburban or rural. 

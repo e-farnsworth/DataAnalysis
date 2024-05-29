@@ -1,0 +1,45 @@
+# Overview
+
+With this program, we are hoping to take a deeper look into the R programing language by performing a data analysis using the R language. Specifically, we are looking at real estate data to answer two questions. 
+
+In this program, we look at two data sets. The primary data set that we use is the [USA Real Estate Dataset](https://www.kaggle.com/datasets/ahmedshahriarsakib/usa-real-estate-dataset/data) from kaggle.com that contains real estate listings in the US by state and zip code. The seccond data set we used came as a result of the findings for the first question. This led us to focus on Ohio and use the data set from [Ohio's Cities by Population (2024)](https://worldpopulationreview.com/states/cities/ohio) which lists the cities in Ohio by population.
+
+The primary purpose for this code is to get a base idea for the spread of house prices across the US.
+
+{Demo Video not completed yet}
+
+[Software Demo Video](http://youtube.link.goes.here)
+
+# Data Analysis Results
+
+The two specific questions that we are going to answer are
+
+1. Which state has the lowest average house price?
+2. In regards to urban, suburban, and rural, which has the lowest average house price?
+
+Overall, Ohio was the state that had the lowest average price. Within Ohio, the urban areas had the lowest average house price. For more details on how this imformation was found, please refer to the [house_prices.Rmd](house_prices.Rmd) file.
+
+# Development Environment
+
+Development Tools
+- R Studio (main coding environment)
+- Visual Studio
+- Git and GitHub
+
+Languages and Libraries
+- R programing languange
+- DT library
+- tidyverse library
+- ggplot2 library
+
+The reason for each of these libraries is commented below the library in the [house_prices.Rmd](house_prices.Rmd) file
+
+# Useful Websites
+
+* Microsoft Copilot
+* [BYUI Statitics Notebook](https://byuistats.github.io/Statistics-Notebook/index.html)
+
+# Future Work
+
+* Use json to pipe the data from kaggle directly
+* double check that Ohio does have the lowest average
